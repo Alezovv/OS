@@ -23,4 +23,4 @@ Child: Child.o Custom.o
 	$(CC) -o Child Child.o Custom.o $(LDFLAGS)
 
 clean:
-	rm -rf $(TARGET) *.o composite.txt
+	rm -rf $(TARGET) *.o

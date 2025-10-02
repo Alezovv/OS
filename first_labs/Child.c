@@ -36,12 +36,17 @@ void int_to_string(int num, char *str)
     str[i] = '\0';
 }
 
-int main()
-{
+int main(int argc, char *argv[])
+{   
+    if (argc < 2) {
+        CustomWrite(2, "Filename not provided\n", 22);
+        _exit(1);
+    }
+    
+    char *filename = argv[1];
     int number;
     ssize_t bytes_read;
-
-    // Читаем числа из канала (от родительского процесса)
+    
     while ((bytes_read = read(STDIN_FILENO, &number, sizeof(number))) > 0)
     {
 
@@ -56,7 +61,7 @@ int main()
         }
 
         int fd;
-        StatusCode result = CustomOpen(&fd, "composite.txt", O_WRONLY | O_CREAT | O_APPEND, 0644);
+        StatusCode result = CustomOpen(&fd, filename, O_WRONLY | O_CREAT | O_APPEND, 0644);
         if (result == SUCCESS)
         {
             char num_str[20];

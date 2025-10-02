@@ -8,6 +8,28 @@ int main()
     int pipefd[2];
     pid_t pid;
     StatusCode result;
+    char filename[100];
+
+    CustomWrite(1, "Enter filename: ", 16);
+    bytes_read = read(0, filename, sizeof(filename) - 1);
+    if (bytes_read <= 0)
+    {
+        CustomWrite(2, "Failed to read filename\n", 24);
+        return 1;
+    }
+
+    int filename_len = 0;
+    while (filename_len < bytes_read && filename[filename_len] != '\n' && filename[filename_len] != '\0')
+    {
+        filename_len++;
+    }
+    filename[filename_len] = '\0';
+
+    if (filename_len == 0)
+    {
+        CustomWrite(2, "Empty filename\n", 15);
+        return 1;
+    }
 
     result = CustomPipe(pipefd);
     if (result != SUCCESS)
@@ -31,7 +53,7 @@ int main()
         dup2(pipefd[0], STDIN_FILENO);
         CustomClose(pipefd[0]);
 
-        execl("./Child", "Child", NULL);
+        execl("./Child", "Child", filename, NULL);
         CustomWrite(2, "Exec failed\n", 12);
         _exit(1);
     }
