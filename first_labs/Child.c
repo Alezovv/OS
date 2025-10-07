@@ -37,16 +37,17 @@ void int_to_string(int num, char *str)
 }
 
 int main(int argc, char *argv[])
-{   
-    if (argc < 2) {
+{
+    if (argc < 2)
+    {
         CustomWrite(2, "Filename not provided\n", 22);
         _exit(1);
     }
-    
+
     char *filename = argv[1];
     int number;
     ssize_t bytes_read;
-    
+
     while ((bytes_read = read(STDIN_FILENO, &number, sizeof(number))) > 0)
     {
 

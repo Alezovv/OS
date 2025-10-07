@@ -65,10 +65,17 @@ int main()
         {
             CustomWrite(1, "Enter number: ", 14);
 
+            int status;
+            if (waitpid(pid, &status, WNOHANG) == pid)
+            {
+                CustomWrite(1, "Child finished after receiving number\n", 38);
+                break;
+            }
+
             bytes_read = read(0, buffer, sizeof(buffer) - 1);
             if (bytes_read <= 0)
                 break;
-
+            
             int len = 0;
             while (len < bytes_read && buffer[len] != '\n' && buffer[len] != '\0')
             {
@@ -98,7 +105,7 @@ int main()
             {
                 number = -number;
             }
-
+            
             result = CustomWrite(pipefd[1], &number, sizeof(number));
             if (result != SUCCESS)
             {
@@ -106,18 +113,15 @@ int main()
                 break;
             }
 
-            if (number < 0)
+            if (waitpid(pid, &status, WNOHANG) == pid)
             {
-                CustomWrite(1, "Negative number, exiting\n", 25);
+                CustomWrite(1, "Child finished after receiving number\n", 38);
                 break;
             }
 
-            usleep(10000);
-
-            int status;
-            if (waitpid(pid, &status, WNOHANG) == pid)
+            if (number < 0)
             {
-                CustomWrite(1, "Child finished, exiting\n", 40);
+                CustomWrite(1, "Negative number, exiting\n", 25);
                 break;
             }
         }
