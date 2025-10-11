@@ -5,7 +5,7 @@ TARGET = main
 
 BINDIR = bin
 
-OBJS = $(BINDIR)/main.o $(BINDIR)/Custom.o $(BINDIR)/Utils.o $(BINDIR)/Validation.o
+OBJS = $(BINDIR)/main.o $(BINDIR)/Custom.o $(BINDIR)/Utils.o $(BINDIR)/Validation.o $(BINDIR)/Centroids.o
 
 .PHONY: all clean
 
@@ -17,7 +17,7 @@ $(BINDIR):
 $(BINDIR)/$(TARGET): $(BINDIR) $(OBJS)
 	$(CC) -o $(BINDIR)/$(TARGET) $(OBJS) $(LDFLAGS)
 
-$(BINDIR)/main.o: src/main.c include/Custom.h include/Utils.h include/Validation.h
+$(BINDIR)/main.o: src/main.c include/Custom.h include/Utils.h include/Validation.h include/Centroids.h
 	$(CC) -c -o $(BINDIR)/main.o src/main.c $(CFLAGS)
 
 $(BINDIR)/Custom.o: src/Custom.c include/Custom.h
@@ -28,6 +28,9 @@ $(BINDIR)/Utils.o: src/Utils.c include/Utils.h
 
 $(BINDIR)/Validation.o: src/Validation.c include/Validation.h
 	$(CC) -c -o $(BINDIR)/Validation.o src/Validation.c $(CFLAGS)
+
+$(BINDIR)/Centroids.o: src/Centroids.c include/Centroids.h
+	$(CC) -c -o $(BINDIR)/Centroids.o src/Centroids.c $(CFLAGS)
 
 clean:
 	rm -rf $(BINDIR)

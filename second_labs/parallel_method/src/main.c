@@ -1,7 +1,6 @@
 #include "../include/Custom.h"
 #include "../include/Validation.h"
-#include "../include/Utils.h"
-#include <stdlib.h>
+#include "../include/Centroids.h"
 
 #define CHECK_STATUS(status, success, handler) \
     do                                         \
@@ -13,12 +12,6 @@
             return status;                     \
         }                                      \
     } while (0)
-
-void print_usage()
-{
-    printf("\nUsage: <program> <max count threads>(int)\n");
-    printf("Example: main 4\n\n");
-}
 
 void validation_handle_error(int status)
 {
@@ -55,15 +48,14 @@ void custom_handle_error(int status)
     }
 }
 
-void *simple_thread(void *arg)
+void print_usage()
 {
-    printf("Поток успешно создан и работает!\n");
-    return NULL;
+    printf("\nUsage: <program> <max count threads>(int)\n");
+    printf("Example: main 4\n\n");
 }
 
 int main(int argc, char *argv[])
 {
-
     ValidationStatus status = ValidArgument(argc, argv);
     CHECK_STATUS(status, VALIDATION_SUCCESS, validation_handle_error);
 
@@ -85,5 +77,37 @@ int main(int argc, char *argv[])
     CHECK_STATUS(status, CUSTOM_SUCCESS, custom_handle_error);
 
     printf("Все потоки завершили работу\n");
+
+    int count_points = 20;
+    int count_clusters = 3;
+    Point points[count_points];
+
+    // Создание случайных точек
+    Create(points, count_points);
+
+    // Инициализация центроидов
+    Centroid *centroids = Initial_Centroids(points, count_points, count_clusters);
+
+    for (int i = 0; i < MAX_ITER; i++)
+    {
+        // Распределение точек по центроидам параллельно
+        parallel_set_centroid(points, count_points, centroids, count_clusters);
+
+        // Пересчет центроидов параллельно
+        parallel_change_centroids(centroids, count_clusters);
+
+        // Вывод текущих центроидов и точек
+        printf("Итерация %d:\n", i + 1);
+        print_centroids(centroids, count_clusters);
+        print_points(centroids, count_clusters);
+    }
+
+    // Очистка памяти
+    for (int i = 0; i < count_clusters; i++)
+    {
+        free(centroids[i].points);
+    }
+    free(centroids);
+
     return 0;
 }
