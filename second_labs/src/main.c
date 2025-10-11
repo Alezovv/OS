@@ -3,20 +3,20 @@
 #include "../include/Utils.h"
 #include <stdlib.h>
 
-#define CHECK_STATUS(status, success, handler)                \
-    do                                                        \
-    {                                                         \
-        if (status != success && status != WARNING_ARGUMENTS) \
-        {                                                     \
-            print_usage();                                    \
-            handler(status);                                  \
-            return status;                                    \
-        }                                                     \
+#define CHECK_STATUS(status, success, handler) \
+    do                                         \
+    {                                          \
+        if (status != success)                 \
+        {                                      \
+            print_usage();                     \
+            handler(status);                   \
+            return status;                     \
+        }                                      \
     } while (0)
 
 void print_usage()
 {
-    printf("\nUsage: <program> <count threads>(int)\n");
+    printf("\nUsage: <program> <max count threads>(int)\n");
     printf("Example: main 4\n\n");
 }
 
@@ -32,12 +32,6 @@ void validation_handle_error(int status)
         break;
     case ERROR_COUNT_CORES:
         printf("Недостаточно ядер!\n");
-        break;
-    case WARNING_ARGUMENTS:
-        printf("Предупреждение:\nВведено много потоков!\n");
-        break;
-    case TO_MANY_THREADS:
-        printf("Выделите меньше потоков!\n");
         break;
     default:
         printf("Неизвестная ошибка!\n");

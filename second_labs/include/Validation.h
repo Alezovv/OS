@@ -10,12 +10,8 @@ typedef enum
     VALIDATION_SUCCESS = 0,
     ERROR_INVALID_COUNT_ARGUMENTS,
     ERROR_INVALID_COUNT_THREADS,
-    ERROR_COUNT_CORES,
-    WARNING_ARGUMENTS,
-    TO_MANY_THREADS
+    ERROR_COUNT_CORES
 } ValidationStatus;
-
-ValidationStatus get_cpu_cores(int *buf_cores);
 
 ValidationStatus ValidArgument(int argc, char *argv[]);
 
