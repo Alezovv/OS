@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "validation.h": "c",
+        "stddef.h": "c",
+        "unistd.h": "c"
+    }
+}
