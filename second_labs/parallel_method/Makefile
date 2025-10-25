@@ -1,36 +1,26 @@
 CC = gcc
-CFLAGS = -I./include
-LDFLAGS = -pthread
+CFLAGS = -Wall -Wextra -std=c99 -I./src -fopenmp     
+LDFLAGS = -pthread -fopenmp                            
 TARGET = main
-
 BINDIR = bin
+SRCS = src/main.c src/Centroids.c
+OBJS = $(SRCS:src/%.c=$(BINDIR)/%.o)
 
-OBJS = $(BINDIR)/main.o $(BINDIR)/Custom.o $(BINDIR)/Utils.o $(BINDIR)/Validation.o $(BINDIR)/Centroids.o
-
-.PHONY: all clean
+.PHONY: all clean run
 
 all: $(BINDIR)/$(TARGET)
 
 $(BINDIR):
 	mkdir -p $(BINDIR)
 
-$(BINDIR)/$(TARGET): $(BINDIR) $(OBJS)
-	$(CC) -o $(BINDIR)/$(TARGET) $(OBJS) $(LDFLAGS)
+$(BINDIR)/$(TARGET): $(OBJS)
+	$(CC) $(OBJS) -o $@ $(LDFLAGS)
 
-$(BINDIR)/main.o: src/main.c include/Custom.h include/Utils.h include/Validation.h include/Centroids.h
-	$(CC) -c -o $(BINDIR)/main.o src/main.c $(CFLAGS)
-
-$(BINDIR)/Custom.o: src/Custom.c include/Custom.h
-	$(CC) -c -o $(BINDIR)/Custom.o src/Custom.c $(CFLAGS)
-
-$(BINDIR)/Utils.o: src/Utils.c include/Utils.h
-	$(CC) -c -o $(BINDIR)/Utils.o src/Utils.c $(CFLAGS)
-
-$(BINDIR)/Validation.o: src/Validation.c include/Validation.h
-	$(CC) -c -o $(BINDIR)/Validation.o src/Validation.c $(CFLAGS)
-
-$(BINDIR)/Centroids.o: src/Centroids.c include/Centroids.h
-	$(CC) -c -o $(BINDIR)/Centroids.o src/Centroids.c $(CFLAGS)
+$(BINDIR)/%.o: src/%.c | $(BINDIR)
+	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
 	rm -rf $(BINDIR)
+
+run: all
+	./$(BINDIR)/$(TARGET)

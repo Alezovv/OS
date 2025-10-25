@@ -25,7 +25,7 @@ void Create(Point point[], int count_points);
 
 int distance(Point a, Point b);
 
-void add_point(Centroid *centroid, Point point); // Указатель на Centroid
+void add_point(Centroid *centroid, Point point);
 
 Centroid *Initial_Centroids(Point point[], int count_points, int count_clusters);
 
@@ -39,6 +39,6 @@ void free_centroids(Centroid *centroids, int count_clusters);
 
 void print_point(Centroid *centroids, int count_centroids);
 
-void Change_Centroids(Centroid *centroids, int count_centroids); // Указатель на массив Centroid
+void Change_Centroids(Centroid *centroids, int count_centroids);
 
 #endif // CENTROIDS_H

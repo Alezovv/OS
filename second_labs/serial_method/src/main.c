@@ -1,3 +1,6 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
 #include "../include/Centroids.h"
 
 int input_number(const char *prompt, int min, int max, const char *error_msg)
@@ -20,9 +23,8 @@ int input_number(const char *prompt, int min, int max, const char *error_msg)
     return value;
 }
 
-int main(int argc, char *argv[])
+int main(void)
 {
-
     int count_points = input_number(
         "Введите число точек (2 - 10000): ",
         2, 10000,
@@ -45,17 +47,16 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    // Создание точек
+    clock_t start = clock();
+
     Point matrix[count_points];
     Create(matrix, count_points);
 
-    // Создание начальных кластеров
     Centroid *centroids = Initial_Centroids(matrix, count_points, count_clusters);
 
     set_centroid(matrix, count_points, centroids, count_clusters);
 
     print_centroids(centroids, count_clusters);
-
     print_point(centroids, count_clusters);
 
     for (int i = 0; i < MAX_ITER; i++)
@@ -65,10 +66,14 @@ int main(int argc, char *argv[])
     }
 
     print_centroids(centroids, count_clusters);
-
     print_point(centroids, count_clusters);
 
     free_centroids(centroids, count_clusters);
+
+    clock_t end = clock();
+
+    double elapsed = (double)(end - start) / CLOCKS_PER_SEC;
+    printf("\nВремя выполнения программы: %.6f секунд\n", elapsed);
 
     return 0;
 }

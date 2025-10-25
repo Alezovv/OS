@@ -1,208 +1,116 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+#include <pthread.h>
 #include "../include/Centroids.h"
 
-void *assign_points_to_centroids(void *arg)
+typedef struct
 {
-    ThreadData *data = (ThreadData *)arg;
+    Point *points;
+    size_t start, end;
+    Centroid *centroids;
+    size_t k;
+} ThreadData;
 
-    for (int i = data->start; i < data->end; i++)
-    {
-        int min_dist = INT_MAX;
-        int closest_index = 0;
-        for (int j = 0; j < data->count_centroids; j++)
-        {
-            int dist = distance(data->points[i], (Point){data->centroids[j].x, data->centroids[j].y, -1});
-            if (dist < min_dist)
-            {
-                min_dist = dist;
-                closest_index = j;
-            }
-        }
-        data->points[i].cluster = closest_index;
-        add_point(&data->centroids[closest_index], data->points[i]);
-    }
-    return NULL;
-}
-
-// Функция для пересчета центроидов (для потоков)
-void *update_centroid(void *arg)
+// Генерация случайных точек
+void initialize_points(Point *points, size_t n)
 {
-    Centroid *centroid = (Centroid *)arg;
-    int sum_x = 0, sum_y = 0;
-
-    for (int i = 0; i < centroid->count_points; i++)
+    for (size_t i = 0; i < n; i++)
     {
-        sum_x += centroid->points[i].x;
-        sum_y += centroid->points[i].y;
-    }
-
-    if (centroid->count_points > 0)
-    {
-        centroid->x = sum_x / centroid->count_points;
-        centroid->y = sum_y / centroid->count_points;
-    }
-
-    return NULL;
-}
-
-// Основная функция для распределения точек по центроидам с использованием потоков
-void parallel_set_centroid(Point points[], int count_points, Centroid centroids[], int count_centroids, int num_threads)
-{
-    pthread_t threads[num_threads];
-    ThreadData data[num_threads];
-
-    // Разделяем работу по потокам
-    int chunk_size = count_points / num_threads;
-    for (int i = 0; i < num_threads; i++)
-    {
-        data[i].points = points;
-        data[i].start = i * chunk_size;
-        data[i].end = (i == num_threads - 1) ? count_points : (i + 1) * chunk_size;
-        data[i].centroids = centroids;
-        data[i].count_centroids = count_centroids;
-
-        pthread_create(&threads[i], NULL, assign_points_to_centroids, (void *)&data[i]);
-    }
-
-    // Ждем завершения всех потоков
-    for (int i = 0; i < num_threads; i++)
-    {
-        pthread_join(threads[i], NULL);
-    }
-}
-
-// Основная функция для параллельного пересчета центроидов
-void parallel_change_centroids(Centroid centroids[], int count_centroids)
-{
-    pthread_t threads[count_centroids];
-
-    for (int i = 0; i < count_centroids; i++)
-    {
-        pthread_create(&threads[i], NULL, update_centroid, (void *)&centroids[i]);
-    }
-
-    // Ждем завершения всех потоков
-    for (int i = 0; i < count_centroids; i++)
-    {
-        pthread_join(threads[i], NULL);
-    }
-}
-
-// Функция для создания случайных точек
-void Create(Point points[], int count_points)
-{
-    srand(time(NULL));
-
-    for (int i = 0; i < count_points; i++)
-    {
-        points[i].x = rand() % 100;
-        points[i].y = rand() % 100;
+        points[i].x = (double)rand() / RAND_MAX * 100.0;
+        points[i].y = (double)rand() / RAND_MAX * 100.0;
         points[i].cluster = -1;
     }
 }
 
-// Функция для вычисления расстояния между точками
-int distance(Point a, Point b)
+// Инициализация центроидов случайно
+Centroid *initialize_centroids(Point *points, size_t n, size_t k)
 {
-    return ((a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y));
-}
-
-// Функция для добавления точки в кластер (центроид)
-void add_point(Centroid *centroid, Point point)
-{
-    centroid->count_points++;
-    Point *new_points = realloc(centroid->points, centroid->count_points * sizeof(Point));
-    if (new_points == NULL)
+    Centroid *centroids = malloc(k * sizeof(Centroid));
+    for (size_t i = 0; i < k; i++)
     {
-        printf("Ошибка памяти!\n");
-        centroid->count_points--;
-        return;
+        centroids[i].x = points[i % n].x;
+        centroids[i].y = points[i % n].y;
     }
-    centroid->points = new_points;
-    centroid->points[centroid->count_points - 1] = point;
-}
-
-// Функция для инициализации центроидов
-Centroid *Initial_Centroids(Point points[], int count_points, int count_clusters)
-{
-    Centroid *centroids = malloc(count_clusters * sizeof(Centroid));
-    if (centroids == NULL)
-    {
-        printf("Ошибка выделения памяти для центроидов!\n");
-        return NULL;
-    }
-
-    for (int i = 0; i < count_clusters; i++)
-    {
-        int random_index = rand() % count_points;
-        centroids[i].x = points[random_index].x;
-        centroids[i].y = points[random_index].y;
-        centroids[i].points = NULL;
-        centroids[i].count_points = 0;
-    }
-
     return centroids;
 }
 
-// Функция для распределения точек по центроидам (непараллельная версия)
-void set_centroid(Point points[], int count_points, Centroid centroids[], int count_centroids)
+void free_centroids(Centroid *centroids)
 {
-    for (int i = 0; i < count_points; i++)
+    free(centroids);
+}
+
+// Потоковая функция назначения точек к ближайшему центроиду
+void *assign_block(void *arg)
+{
+    ThreadData *data = (ThreadData *)arg;
+    for (size_t i = data->start; i < data->end; i++)
     {
-        int min_dist = INT_MAX;
-        int closest_index = 0;
-        for (int j = 0; j < count_centroids; j++)
+        double min_dist = INFINITY;
+        int cluster = 0;
+        for (size_t j = 0; j < data->k; j++)
         {
-            int dist = distance(points[i], (Point){centroids[j].x, centroids[j].y, -1});
+            double dx = data->points[i].x - data->centroids[j].x;
+            double dy = data->points[i].y - data->centroids[j].y;
+            double dist = dx * dx + dy * dy;
             if (dist < min_dist)
             {
                 min_dist = dist;
-                closest_index = j;
+                cluster = j;
             }
         }
-        points[i].cluster = closest_index;
-        add_point(&centroids[closest_index], points[i]);
+        data->points[i].cluster = cluster;
+    }
+    return NULL;
+}
+
+void assign_points_to_clusters(Point *points, size_t n, Centroid *centroids, size_t k, int max_threads)
+{
+    pthread_t threads[max_threads];
+    ThreadData thread_data[max_threads];
+
+    size_t block = n / max_threads;
+    for (int t = 0; t < max_threads; t++)
+    {
+        thread_data[t].points = points;
+        thread_data[t].centroids = centroids;
+        thread_data[t].k = k;
+        thread_data[t].start = t * block;
+        thread_data[t].end = (t == max_threads - 1) ? n : (t + 1) * block;
+        pthread_create(&threads[t], NULL, assign_block, &thread_data[t]);
+    }
+
+    for (int t = 0; t < max_threads; t++)
+    {
+        pthread_join(threads[t], NULL);
     }
 }
 
-// Функция для вывода центроидов
-void print_centroids(Centroid *centroids, int count_clusters)
+// Обновление центроидов
+void update_centroids(Point *points, size_t n, Centroid *centroids, size_t k)
 {
-    printf("Центроиды:\n");
-    for (int i = 0; i < count_clusters; i++)
-    {
-        printf("Центроид %d: (%d, %d), точек: %d\n", i, centroids[i].x, centroids[i].y, centroids[i].count_points);
-    }
-}
+    double *sum_x = calloc(k, sizeof(double));
+    double *sum_y = calloc(k, sizeof(double));
+    size_t *count = calloc(k, sizeof(size_t));
 
-// Функция для вывода точек в каждом кластере
-void print_points(Centroid *centroids, int count_centroids)
-{
-    printf("Точки в кластерах:\n");
-    for (int i = 0; i < count_centroids; i++)
+    for (size_t i = 0; i < n; i++)
     {
-        printf("Центроид %d: \n", i);
-        for (int j = 0; j < centroids[i].count_points; j++)
+        int c = points[i].cluster;
+        sum_x[c] += points[i].x;
+        sum_y[c] += points[i].y;
+        count[c]++;
+    }
+
+    for (size_t j = 0; j < k; j++)
+    {
+        if (count[j] != 0)
         {
-            printf("Точка %d: (%d, %d)\n", j, centroids[i].points[j].x, centroids[i].points[j].y);
+            centroids[j].x = sum_x[j] / count[j];
+            centroids[j].y = sum_y[j] / count[j];
         }
     }
-}
 
-// Функция для пересчета центроидов
-void Change_Centroids(Centroid *centroids, int count_centroids)
-{
-    for (int i = 0; i < count_centroids; i++)
-    {
-        if (centroids[i].count_points > 0)
-        {
-            int sum_x = 0, sum_y = 0;
-            for (int j = 0; j < centroids[i].count_points; j++)
-            {
-                sum_x += centroids[i].points[j].x;
-                sum_y += centroids[i].points[j].y;
-            }
-            centroids[i].x = sum_x / centroids[i].count_points;
-            centroids[i].y = sum_y / centroids[i].count_points;
-        }
-    }
+    free(sum_x);
+    free(sum_y);
+    free(count);
 }

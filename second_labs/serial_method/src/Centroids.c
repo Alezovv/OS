@@ -154,6 +154,6 @@ void print_point(Centroid *centroids, int count_centroids)
         printf("\nЦентроид №%d: \n\n", i);
         for (int j = 0; j < centroids[i].count_points; j++)
             printf("Точка %d: (%d, %d)\n", j,
-                   centroids[i].points[j].x, centroids[i].points[j].y); // ИСПРАВЛЕНО
+                   centroids[i].points[j].x, centroids[i].points[j].y); 
     }
 }

@@ -1,113 +1,81 @@
-#include "../include/Custom.h"
-#include "../include/Validation.h"
+#define _POSIX_C_SOURCE 199309L
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
 #include "../include/Centroids.h"
+#include <omp.h>
 
-#define CHECK_STATUS(status, success, handler) \
-    do                                         \
-    {                                          \
-        if (status != success)                 \
-        {                                      \
-            print_usage();                     \
-            handler(status);                   \
-            return status;                     \
-        }                                      \
-    } while (0)
+#define MAX_ITER 50
 
-void validation_handle_error(int status)
+int input_number(const char *prompt, int min, int max)
 {
-    switch (status)
+    int value;
+    printf("%s", prompt);
+    if (scanf("%d", &value) != 1)
     {
-    case ERROR_INVALID_COUNT_ARGUMENTS:
-        printf("Неверное количество аргументов!\n");
-        break;
-    case ERROR_INVALID_COUNT_THREADS:
-        printf("Неправильно введено число потоков!\n");
-        break;
-    case ERROR_COUNT_CORES:
-        printf("Недостаточно ядер!\n");
-        break;
-    default:
-        printf("Неизвестная ошибка!\n");
-        break;
+        printf("Ошибка: введено не число!\n");
+        exit(1);
     }
+    if (value < min || value > max)
+    {
+        printf("Ошибка: значение должно быть от %d до %d\n", min, max);
+        exit(1);
+    }
+    return value;
 }
 
-void custom_handle_error(int status)
+int main()
 {
-    switch (status)
+    int n_points = input_number("Введите число точек (1000-100000): ", 1000, 100000);
+    int n_clusters = input_number("Введите число кластеров (1-100): ", 1, 100);
+
+    Point *points = malloc(n_points * sizeof(Point));
+    if (!points)
     {
-    case ERROR_THREAD_CREATE:
-        printf("Не удалось создать поток!\n");
-        break;
-    case ERROR_THREAD_JOIN:
-        printf("Не удалось дождаться поток!\n");
-        break;
-    default:
-        printf("Неизвестная ошибка!\n");
-        break;
+        perror("malloc");
+        exit(1);
     }
-}
+    initialize_points(points, n_points);
+    Centroid *centroids = initialize_centroids(points, n_points, n_clusters);
 
-void print_usage()
-{
-    printf("\nUsage: <program> <max count threads>(int)\n");
-    printf("Example: main 4\n\n");
-}
+    int threads_array[] = {1, 2, 4, 8, 16, 128, 1024};
+    size_t num_experiments = sizeof(threads_array) / sizeof(int);
+    double times[num_experiments];
 
-int main(int argc, char *argv[])
-{
-    ValidationStatus status = ValidArgument(argc, argv);
-    CHECK_STATUS(status, VALIDATION_SUCCESS, validation_handle_error);
+    printf("Проверка производительности для разных количеств потоков:\n");
 
-    pthread_t thread1,
-        thread2;
-    char *msg1 = "Поток 1";
-    char *msg2 = "Поток 2";
-
-    status = custom_pthread_create(&thread1, NULL, simple_thread, NULL);
-    CHECK_STATUS(status, CUSTOM_SUCCESS, custom_handle_error);
-
-    status = custom_pthread_create(&thread2, NULL, simple_thread, NULL);
-    CHECK_STATUS(status, CUSTOM_SUCCESS, custom_handle_error);
-
-    status = custom_pthread_join(thread1, NULL);
-    CHECK_STATUS(status, CUSTOM_SUCCESS, custom_handle_error);
-
-    status = custom_pthread_join(thread2, NULL);
-    CHECK_STATUS(status, CUSTOM_SUCCESS, custom_handle_error);
-
-    printf("Все потоки завершили работу\n");
-
-    int count_points = 20;
-    int count_clusters = 3;
-    Point points[count_points];
-
-    // Создание случайных точек
-    Create(points, count_points);
-
-    // Инициализация центроидов
-    Centroid *centroids = Initial_Centroids(points, count_points, count_clusters);
-
-    for (int i = 0; i < MAX_ITER; i++)
+    for (size_t t = 0; t < num_experiments; t++)
     {
-        // Распределение точек по центроидам параллельно
-        parallel_set_centroid(points, count_points, centroids, count_clusters);
+        int max_threads = threads_array[t];
 
-        // Пересчет центроидов параллельно
-        parallel_change_centroids(centroids, count_clusters);
+        struct timespec start, end;
+        clock_gettime(CLOCK_MONOTONIC, &start);
 
-        // Вывод текущих центроидов и точек
-        printf("Итерация %d:\n", i + 1);
-        print_centroids(centroids, count_clusters);
-        print_points(centroids, count_clusters);
+        for (int iter = 0; iter < MAX_ITER; iter++)
+        {
+            omp_set_num_threads(max_threads);
+            assign_points_to_clusters(points, n_points, centroids, n_clusters, max_threads);
+            update_centroids(points, n_points, centroids, n_clusters);
+        }
+
+        clock_gettime(CLOCK_MONOTONIC, &end);
+        double elapsed = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
+        times[t] = elapsed;
+
+        printf("Потоки=%d, время=%.6f секунд\n", max_threads, elapsed);
     }
 
-    // Очистка памяти
-    for (int i = 0; i < count_clusters; i++)
+    double T1 = times[0];
+    printf("\nЧисло потоков | Время (с) | Ускорение | Эффективность\n");
+    for (size_t t = 0; t < num_experiments; t++)
     {
-        free(centroids[i].points);
+        int p = threads_array[t];
+        double Sp = T1 / times[t];
+        double Ep = Sp / p;
+        printf("%12d | %8.6f | %9.3f | %13.3f\n", p, times[t], Sp, Ep);
     }
+
     free(centroids);
-
+    free(points);
     return 0;
 }
